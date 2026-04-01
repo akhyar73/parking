@@ -1,410 +1,192 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FT Parking Monitoring</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .parking-slot { transition: all 0.3s ease; }
-        .occupied { background-color: #ef4444; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); }
-        .available { background-color: #10b981; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); }
-        .live-indicator { animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .video-container { background: #000; border-radius: 8px; overflow: hidden; position: relative; }
-        .status-badge { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Ruang Parkir</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: #f5f5f5;
+    }
+
+    h1 {
+      margin: 0 0 4px 0;
+      font-size: 20px;
+    }
+
+    .meta {
+      font-size: 12px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    .card {
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 320px;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #eee;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .full {
+      background-color: #cc0000;
+      color: #fff;
+    }
+
+    .empty {
+      background-color: #008000;
+      color: #fff;
+    }
+
+    .pending {
+      background-color: #d98b00;
+      color: #fff;
+    }
+
+    #no_data_msg {
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 18px;
+      }
+      table {
+        font-size: 12px;
+      }
+    }
+  </style>
 </head>
-<body class="bg-gray-100">
-    <!-- Header -->
-    <header class="bg-blue-800 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="flex items-center mb-4 md:mb-0">
-                    <i class="fas fa-car text-3xl mr-3"></i>
-                    <div>
-                        <h1 class="text-2xl font-bold">FT Parking Monitoring</h1>
-                        <p class="text-blue-200">Dekanat Fakultas Teknik</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="bg-blue-700 px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-clock mr-2"></i>
-                        <span id="current-time">00:00:00</span>
-                    </div>
-                    <div class="bg-blue-700 px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-calendar-day mr-2"></i>
-                        <span id="current-date">01 Jan 2023</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
+<body>
+  <h1>Status Ruang Parkir</h1>
+  <p class="meta">Diperbarui: <span id="updated_at">-</span></p>
+  <p class="meta">Halaman ini diperbarui otomatis setiap 1 detik.</p>
 
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-8">
-        <!-- Status Summary -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-md p-6 flex items-center">
-                <div class="bg-green-100 p-4 rounded-full mr-4">
-                    <i class="fas fa-check-circle text-green-600 text-2xl"></i>
-                </div>
-                <div>
-                    <p class="text-gray-500">Available Slots</p>
-                    <h3 class="text-2xl font-bold text-green-600" id="available-slots">5</h3>
-                </div>
-            </div>
-            <div class="bg-white rounded-xl shadow-md p-6 flex items-center">
-                <div class="bg-red-100 p-4 rounded-full mr-4">
-                    <i class="fas fa-times-circle text-red-600 text-2xl"></i>
-                </div>
-                <div>
-                    <p class="text-gray-500">Occupied Slots</p>
-                    <h3 class="text-2xl font-bold text-red-600" id="occupied-slots">0</h3>
-                </div>
-            </div>
-        </div>
+  <div class="card">
+    <div class="table-wrapper">
+      <table id="table_status" style="display:none;">
+        <thead>
+          <tr>
+            <th>Nama Slot</th>
+            <th>Status</th>
+            <th>Timer (detik)</th>
+          </tr>
+        </thead>
+        <tbody id="slots_body">
+          <!-- diisi lewat JavaScript -->
+        </tbody>
+      </table>
+    </div>
+    <p id="no_data_msg">Belum ada data slot yang diterima dari server.</p>
+  </div>
 
-        <!-- Layout and Video -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Parking Layout -->
-            <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                <div class="bg-gray-800 text-white px-6 py-4">
-                    <h2 class="text-xl font-bold flex items-center">
-                        <i class="fas fa-map-marked-alt mr-2"></i>Parking Layout
-                    </h2>
-                </div>
-                <div class="p-6">
-                    <div class="parking-layout relative h-64 md:h-80 bg-gray-100 rounded-lg overflow-hidden">
-                        <!-- Building Structure -->
-                        <div class="absolute top-0 left-0 w-full h-1/4 bg-gray-300 flex items-center justify-center">
-                            <span class="font-bold text-gray-700">Dekanat Fakultas Teknik</span>
-                        </div>
-                        
-                        <!-- Parking Slots -->
-                        <div class="absolute bottom-0 left-0 w-full h-3/4 flex flex-col justify-around p-4">
-                            <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-4">
-                                <div class="parking-slot available w-24 h-16 md:w-28 md:h-18 rounded-lg flex flex-col items-center justify-center text-white font-bold cursor-pointer transform hover:scale-105 transition-all" id="dekan-slot" onclick="toggleSlot('DEKAN')">
-                                    <span class="text-sm">DEKAN</span>
-                                    <span class="text-xs mt-1 status-badge">Available</span>
-                                </div>
-                                <div class="parking-slot available w-24 h-16 md:w-28 md:h-18 rounded-lg flex flex-col items-center justify-center text-white font-bold cursor-pointer transform hover:scale-105 transition-all" id="wd1-slot" onclick="toggleSlot('WD1')">
-                                    <span class="text-sm">WD1</span>
-                                    <span class="text-xs mt-1 status-badge">Available</span>
-                                </div>
-                                <div class="parking-slot available w-24 h-16 md:w-28 md:h-18 rounded-lg flex flex-col items-center justify-center text-white font-bold cursor-pointer transform hover:scale-105 transition-all" id="wd2-slot" onclick="toggleSlot('WD2')">
-                                    <span class="text-sm">WD2</span>
-                                    <span class="text-xs mt-1 status-badge">Available</span>
-                                </div>
-                                <div class="parking-slot available w-24 h-16 md:w-28 md:h-18 rounded-lg flex flex-col items-center justify-center text-white font-bold cursor-pointer transform hover:scale-105 transition-all" id="wd3-slot" onclick="toggleSlot('WD3')">
-                                    <span class="text-sm">WD3</span>
-                                    <span class="text-xs mt-1 status-badge">Available</span>
-                                </div>
-                                <div class="parking-slot available w-24 h-16 md:w-28 md:h-18 rounded-lg flex flex-col items-center justify-center text-white font-bold cursor-pointer transform hover:scale-105 transition-all" id="wd4-slot" onclick="toggleSlot('WD4')">
-                                    <span class="text-sm">WD4</span>
-                                    <span class="text-xs mt-1 status-badge">Available</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Legend -->
-                        <div class="absolute bottom-2 right-2 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-sm">
-                            <div class="flex items-center mb-1">
-                                <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                                <span class="text-xs">Available</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                                <span class="text-xs">Occupied</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CCTV -->
-            <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                <div class="bg-gray-800 text-white px-6 py-4">
-                    <h2 class="text-xl font-bold flex items-center">
-                        <i class="fas fa-video mr-2"></i>CCTV
-                        <span id="connection-status" class="ml-2 text-sm bg-yellow-500 px-2 py-1 rounded text-white">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>Starting...
-                        </span>
-                    </h2>
-                </div>
-                <div class="p-6">
-                    <div class="video-container">
-                        <img id="video-display" 
-                             alt="CCTV" 
-                             class="w-full h-64 md:h-80 object-contain bg-black rounded-lg">
-                        <div id="loading-overlay" class="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 rounded-lg">
-                            <div class="text-white text-center">
-                                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-                                <p class="text-lg">Loading camera feed...</p>
-                                <p class="text-sm mt-2" id="loading-status">Initializing...</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 flex justify-between items-center">
-                        <div class="text-sm text-gray-500">
-                            <span id="camera-info">Ready to start</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Activity -->
-        <div class="mt-8 bg-white rounded-xl shadow-md overflow-hidden">
-            <div class="bg-gray-800 text-white px-6 py-4">
-                <h2 class="text-xl font-bold flex items-center">
-                    <i class="fas fa-history mr-2"></i>Recent Parking Activity
-                </h2>
-            </div>
-            <div class="p-6">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slot</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                            </tr>
-                        </thead>
-                        <tbody id="activity-table" class="bg-white divide-y divide-gray-200">
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" colspan="3">
-                                    No recent activity
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        let videoInterval = null;
-        let isVideoRunning = false;
-        let frameCount = 0;
-
-        // Update current time and date
-        function updateDateTime() {
-            const now = new Date();
-            
-            const hours = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const seconds = now.getSeconds().toString().padStart(2, '0');
-            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
-            
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options);
+  <script>
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/parking-status");
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
         }
 
-        // Update video frame from API
-        function updateVideoFrame() {
-            if (!isVideoRunning) return;
-            
-            fetch('/api/get_frame')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.frame) {
-                        document.getElementById('video-display').src = data.frame;
-                        document.getElementById('loading-overlay').style.display = 'none';
-                        frameCount++;
-                        
-                        if (data.connected) {
-                            document.getElementById('connection-status').innerHTML = '<i class="fas fa-circle mr-1 live-indicator"></i>Live';
-                            document.getElementById('connection-status').className = 'ml-2 text-sm bg-green-500 px-2 py-1 rounded text-white';
-                        } else {
-                            document.getElementById('connection-status').innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>No Camera';
-                            document.getElementById('connection-status').className = 'ml-2 text-sm bg-orange-500 px-2 py-1 rounded text-white';
-                        }
-                        
-                        document.getElementById('camera-info').textContent = `Frame: ${frameCount} | ${data.timestamp}`;
-                    } else {
-                        // Show placeholder frame
-                        if (data.frame) {
-                            document.getElementById('video-display').src = data.frame;
-                            document.getElementById('loading-overlay').style.display = 'none';
-                        }
-                        document.getElementById('connection-status').innerHTML = '<i class="fas fa-times mr-1"></i>Error';
-                        document.getElementById('connection-status').className = 'ml-2 text-sm bg-red-500 px-2 py-1 rounded text-white';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching frame:', error);
-                    document.getElementById('connection-status').innerHTML = '<i class="fas fa-wifi mr-1"></i>Network Error';
-                    document.getElementById('connection-status').className = 'ml-2 text-sm bg-red-500 px-2 py-1 rounded text-white';
-                });
+        const data = await res.json();
+        const updatedEl = document.getElementById("updated_at");
+        const tableEl = document.getElementById("table_status");
+        const bodyEl = document.getElementById("slots_body");
+        const noDataEl = document.getElementById("no_data_msg");
+
+        // jika belum ada slot
+        if (!data || !data.slots || Object.keys(data.slots).length === 0) {
+          updatedEl.textContent = "-";
+          tableEl.style.display = "none";
+          noDataEl.style.display = "block";
+          return;
         }
 
-        // Start video feed
-        function startVideoFeed() {
-            if (isVideoRunning) return;
-            
-            isVideoRunning = true;
-            frameCount = 0;
-            document.getElementById('loading-status').textContent = 'Starting video feed...';
-            document.getElementById('loading-overlay').style.display = 'flex';
-            
-            // Update frame every 1000ms (1 FPS for web display to reduce load)
-            videoInterval = setInterval(updateVideoFrame, 1000);
-            
-            // Get first frame immediately
-            updateVideoFrame();
-            
-            console.log('✅ Video feed started');
+        updatedEl.textContent = data.updated_at || "-";
+        noDataEl.style.display = "none";
+        tableEl.style.display = "table";
+
+        // kosongkan isi tabel
+        bodyEl.innerHTML = "";
+
+        // isi ulang tabel
+        for (const [name, info] of Object.entries(data.slots)) {
+          const tr = document.createElement("tr");
+
+          const tdName = document.createElement("td");
+          tdName.textContent = name;
+          tr.appendChild(tdName);
+
+          const tdStatus = document.createElement("td");
+          const span = document.createElement("span");
+          span.classList.add("badge");
+
+          if (info.state === "full") {
+            span.classList.add("full");
+            span.textContent = "FULL";
+          } else if (info.state === "pending") {
+            span.classList.add("pending");
+            span.textContent = "PENDING";
+          } else {
+            span.classList.add("empty");
+            span.textContent = "EMPTY";
+          }
+
+          tdStatus.appendChild(span);
+          tr.appendChild(tdStatus);
+
+          const tdTimer = document.createElement("td");
+          const t = info.timer || 0;
+          tdTimer.textContent = t.toFixed(2);
+          tr.appendChild(tdTimer);
+
+          bodyEl.appendChild(tr);
         }
+      } catch (err) {
+        console.error("Gagal mengambil data status:", err);
+      }
+    }
 
-        // Stop video feed
-        function stopVideoFeed() {
-            isVideoRunning = false;
-            
-            if (videoInterval) {
-                clearInterval(videoInterval);
-                videoInterval = null;
-            }
-            
-            document.getElementById('connection-status').innerHTML = '<i class="fas fa-stop mr-1"></i>Stopped';
-            document.getElementById('connection-status').className = 'ml-2 text-sm bg-gray-500 px-2 py-1 rounded text-white';
-            document.getElementById('camera-info').textContent = 'Video feed stopped';
-            
-            console.log('⏹️ Video feed stopped');
-        }
-
-        // Test camera connection
-        function testCamera() {
-            fetch('/api/test_camera')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Camera test result:', data);
-                    alert(`Camera Test Result:\nSuccess: ${data.success}\nSource: ${data.source}\nConnected: ${data.connected}\nMessage: ${data.message}`);
-                    
-                    if (data.success && !isVideoRunning) {
-                        setTimeout(() => startVideoFeed(), 1000);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error testing camera:', error);
-                    alert('Error testing camera connection');
-                });
-        }
-
-        // Take snapshot
-        function takeSnapshot() {
-            const videoDisplay = document.getElementById('video-display');
-            if (videoDisplay.src) {
-                const link = document.createElement('a');
-                link.download = `parking-snapshot-${new Date().getTime()}.png`;
-                link.href = videoDisplay.src;
-                link.click();
-                console.log('📸 Snapshot taken');
-            } else {
-                alert('No video frame available for snapshot');
-            }
-        }
-
-        // Toggle parking slot (for testing)
-        function toggleSlot(slotName) {
-            fetch(`/api/toggle_slot/${slotName}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateParkingStatus();
-                        console.log(`🚗 Slot ${slotName} toggled`);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error toggling slot:', error);
-                });
-        }
-
-        // Update parking status from API
-        function updateParkingStatus() {
-            fetch('/api/parking_status')
-                .then(response => response.json())
-                .then(data => {
-                    // Update summary
-                    document.getElementById('available-slots').textContent = data.summary.available;
-                    document.getElementById('occupied-slots').textContent = data.summary.occupied;
-                    
-                    // Update parking slots
-                    for (const [slotKey, slotData] of Object.entries(data.slots)) {
-                        const slotElement = document.getElementById(`${slotKey}-slot`);
-                        if (slotElement) {
-                            const statusBadge = slotElement.querySelector('.status-badge');
-                            
-
-                            slotElement.classList.remove('occupied', 'available');
-                            
-
-                            if (slotData.occupied) {
-                                slotElement.classList.add('occupied');
-                                statusBadge.textContent = 'Occupied';
-                            } else {
-                                slotElement.classList.add('available');
-                                statusBadge.textContent = 'Available';
-                            }
-                        }
-                    }
-                    
-                    // Update recent activities
-                    updateActivityTable(data.recent_activities);
-                })
-                .catch(error => {
-                    console.error('Error fetching parking status:', error);
-                });
-        }
-
-        // Update activity table
-        function updateActivityTable(activities) {
-            const tbody = document.getElementById('activity-table');
-            tbody.innerHTML = '';
-            
-            if (activities.length === 0) {
-                tbody.innerHTML = '<tr><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" colspan="3">No recent activity</td></tr>';
-                return;
-            }
-            
-            activities.forEach(activity => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-
-                    <td class="px-6 py-4 whitespace-nowrap font-medium">${activity.slot}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 text-xs rounded-full ${activity.status === 'Occupied' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                            ${activity.status}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.time}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Initializing parking monitoring system...');
-            
-            updateDateTime();
-            updateParkingStatus();
-            
-            // Update time every second
-            setInterval(updateDateTime, 1000);
-            
-            // Update parking status every 10 seconds
-            setInterval(updateParkingStatus, 10000);
-            
-            // Auto-start video feed after 2 seconds
-            setTimeout(() => {
-                console.log('🎥 Auto-starting video feed...');
-                startVideoFeed();
-            }, 2000);
-        });
-    </script>
+    // panggil pertama kali
+    fetchStatus();
+    // update setiap 1 detik
+    setInterval(fetchStatus, 1000);
+  </script>
 </body>
 </html>
